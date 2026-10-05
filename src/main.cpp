@@ -1,7 +1,7 @@
 /*
  * ESP32-S3 closed-loop speed control of a DC motor with quadrature encoder.
  *
- *  - Motor   : NFP-GM37-520-PEN, 12 V, 107 rpm (output shaft), Hall encoder
+ *  - Motor   : JGA25-370, 12 V, 60 rpm (output shaft), 1:103 gearbox, Hall encoder
  *  - Driver  : TB6612FNG (channel A)
  *  - Setpoint: potentiometer on ADC1 (0 .. MAX_SETPOINT_RPM)
  *  - Feedback: speed = encoder counts accumulated over a fixed sample period
@@ -44,19 +44,19 @@ constexpr int PIN_ENC_B = 16;
 constexpr int PIN_POT = 1;  // ADC1 channel (ADC2 is avoided on purpose)
 
 // ----------------------------- Motor / encoder ----------------------------
-// GM37-520 typical values: 11 pulses/rev per channel on the motor shaft and a
-// 90:1 gearbox (~107-110 rpm at 12 V). Verify with your datasheet and, if
-// necessary, calibrate by turning the output shaft exactly one revolution and
-// reading the counter.
+// JGA25-370: 11 pulses/rev per channel on the motor shaft and a 103:1 gearbox
+// (60 rpm at 12 V) -> 11 * 4 * 103 = 4532 counts per output rev.
+// If necessary, calibrate by turning the output shaft exactly one revolution
+// and reading the counter.
 constexpr float ENCODER_PPR_MOTOR = 11.0f;  // pulses per channel per motor rev
-constexpr float GEAR_RATIO        = 90.0f;
+constexpr float GEAR_RATIO        = 103.0f;
 constexpr float COUNTS_PER_REV    = ENCODER_PPR_MOTOR * 4.0f * GEAR_RATIO;  // x4 decoding
 constexpr bool  ENCODER_INVERT    = false;  // flip if speed reads negative
 
-constexpr float MOTOR_NOLOAD_RPM  = 107.0f;  // at 12 V
+constexpr float MOTOR_NOLOAD_RPM  = 60.0f;   // at 12 V
 // Keep the setpoint below the no-load speed to leave control headroom.
-constexpr float MAX_SETPOINT_RPM  = 95.0f;
-constexpr float MIN_SETPOINT_RPM  = 3.0f;    // below this the motor is stopped
+constexpr float MAX_SETPOINT_RPM  = 54.0f;
+constexpr float MIN_SETPOINT_RPM  = 2.0f;    // below this the motor is stopped
 
 // ------------------------------- PWM --------------------------------------
 constexpr uint32_t PWM_FREQ_HZ = 20000;  // inaudible, TB6612FNG supports up to 100 kHz
@@ -65,11 +65,11 @@ constexpr uint32_t PWM_MAX     = (1u << PWM_BITS) - 1;
 constexpr uint8_t  PWM_CHANNEL = 0;      // used by LEDC API of arduino-esp32 2.x
 
 // ------------------------------ Control -----------------------------------
-constexpr uint32_t CONTROL_PERIOD_US = 20000;  // 20 ms -> 50 Hz loop (~140 counts/sample at full speed)
+constexpr uint32_t CONTROL_PERIOD_US = 20000;  // 20 ms -> 50 Hz loop (~91 counts/sample at full speed)
 constexpr uint32_t PRINT_PERIOD_MS   = 50;
 
-constexpr float KP_DEFAULT = 0.004f;  // duty per rpm of error
-constexpr float KI_DEFAULT = 0.030f;  // duty per (rpm * s) of error
+constexpr float KP_DEFAULT = 0.007f;  // duty per rpm of error (starting point, tune over serial)
+constexpr float KI_DEFAULT = 0.050f;  // duty per (rpm * s) of error
 constexpr float GAIN_MAX   = PiController::kGainMax;  // sanity limit for values typed over serial
 constexpr float INTEGRAL_LIMIT = 0.5f;                // anti-windup clamp, duty units
 
@@ -78,7 +78,7 @@ static PiController pi(KP_DEFAULT, KI_DEFAULT, 0.0f, 1.0f, INTEGRAL_LIMIT);
 
 constexpr float SPEED_FILTER_ALPHA    = 0.35f;  // EMA on measured speed (1 = no filter)
 constexpr float SETPOINT_FILTER_ALPHA = 0.10f;  // EMA on pot reading (noise rejection)
-constexpr float SETPOINT_RAMP_RPM_S   = 300.0f; // max setpoint change rate (soft start)
+constexpr float SETPOINT_RAMP_RPM_S   = 170.0f; // max setpoint change rate (soft start)
 
 // ---------------------------- Encoder decoding ----------------------------
 static volatile int32_t encoderCount = 0;

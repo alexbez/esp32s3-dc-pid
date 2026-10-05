@@ -3,9 +3,9 @@
 PlatformIO / Arduino firmware that holds a DC motor at a speed set by a potentiometer.
 
 - **MCU:** ESP32-S3 (tested config: `esp32-s3-devkitc-1`)
-- **Motor:** NFP-GM37-520-PEN, 12 V, 107 rpm (output shaft), with Hall quadrature encoder
+- **Motor:** JGA25-370, 12 V, 60 rpm (output shaft), 1:103 gearbox, with Hall quadrature encoder
 - **Driver:** TB6612FNG (channel A)
-- **Setpoint:** potentiometer, 0 to 95 rpm
+- **Setpoint:** potentiometer, 0 to 54 rpm
 - **Feedback:** speed from encoder counts over a fixed 20 ms sample period
 - **Controller:** PI with feed-forward and anti-windup, gains adjustable over serial
 
@@ -14,9 +14,9 @@ PlatformIO / Arduino firmware that holds a DC motor at a speed set by a potentio
 1. Both encoder channels are decoded at 4x resolution in interrupts.
 2. Every 20 ms the firmware takes the change in counts and converts it to rpm (then smooths it).
 3. The potentiometer value is oversampled, filtered and rate-limited to give the target rpm.
-4. The PI controller computes a PWM duty: `duty = target/107 (feed-forward) + Kp*error + integral`.
+4. The PI controller computes a PWM duty: `duty = target/60 (feed-forward) + Kp*error + integral`.
    The integrator freezes while the output is saturated (anti-windup).
-5. The duty drives the TB6612FNG at 20 kHz PWM. Below 3 rpm the motor is stopped and braked.
+5. The duty drives the TB6612FNG at 20 kHz PWM. Below 2 rpm the motor is stopped and braked.
 
 ## Hardware
 
@@ -24,7 +24,7 @@ PlatformIO / Arduino firmware that holds a DC motor at a speed set by a potentio
 |---|---|
 | ESP32-S3 dev board | Powered over USB |
 | TB6612FNG breakout | Motor driver, 1.2 A continuous / 3.2 A peak per channel |
-| NFP-GM37-520-PEN motor, 12 V | With encoder, 6-wire |
+| JGA25-370 motor, 12 V, 60 rpm, 1:103 | With encoder, 6-wire |
 | 12 V DC supply | Must cover the motor stall current, see the warning below |
 | 10 kOhm potentiometer | Linear (B10K) |
 | 100 uF electrolytic capacitor (recommended) | Across the TB6612FNG VM and GND |
@@ -52,7 +52,7 @@ If the motor turns the wrong way, swap the two motor wires on AO1/AO2.
 
 ### Motor and encoder
 
-The GM37-520 has six wires. Colors vary between manufacturers, so check the datasheet of your motor before powering it. A typical layout:
+The JGA25-370 with encoder has six wires. Colors vary between manufacturers, so check the datasheet of your motor before powering it. A typical layout:
 
 | Motor wire (typical color) | Function | Connect to |
 |---|---|---|
@@ -101,7 +101,7 @@ Power the encoder from 3.3 V, not 5 V. The encoder outputs then swing to 3.3 V, 
 
 ### Power warnings
 
-- The motor draws roughly 0.2 A with no load, but the stall current of a GM37-520 is typically 2 A or more. That is above the 1.2 A continuous rating of the TB6612FNG. Do not hold the shaft for long, and use a current-limited supply for first tests.
+- The JGA25-370 draws well under 0.2 A with no load, but its stall current is typically around 1 to 2 A, which can reach or exceed the 1.2 A continuous rating of the TB6612FNG. Do not hold the shaft for long, and use a current-limited supply for first tests.
 - Do not connect or disconnect the motor supply while it is powered.
 - Connect the 100 uF capacitor close to the VM and GND pins, with the correct polarity.
 
@@ -125,9 +125,9 @@ If you use a different ESP32-S3 board, change `board` in `platformio.ini`.
 
 Check the encoder settings at the top of `src/main.cpp`:
 
-- `ENCODER_PPR_MOTOR = 11` and `GEAR_RATIO = 90` are common values for the GM37-520 (3960 counts per output revolution). Confirm them against your motor's datasheet. Wrong values scale the measured and displayed rpm by the same factor.
+- `ENCODER_PPR_MOTOR = 11` and `GEAR_RATIO = 103` match this JGA25-370 (4532 counts per output revolution). Wrong values scale the measured and displayed rpm by the same factor.
 - If the measured speed is negative when the motor runs forward, set `ENCODER_INVERT = true`.
-- `MOTOR_NOLOAD_RPM = 107` and `MAX_SETPOINT_RPM = 95` set the feed-forward and the top of the potentiometer range. Keep the maximum setpoint below the no-load speed so the controller has headroom.
+- `MOTOR_NOLOAD_RPM = 60` and `MAX_SETPOINT_RPM = 54` set the feed-forward and the top of the potentiometer range. Keep the maximum setpoint below the no-load speed so the controller has headroom.
 
 ## Serial interface
 
@@ -147,7 +147,7 @@ Type one command per line:
 | `ki <value>` | Set the integral gain (duty per rpm and second). With no value, prints the current gains. |
 | `get` | Print the current gains. |
 | `save` | Store the gains in flash. They are restored on boot. |
-| `default` | Restore the built-in gains (`Kp = 0.004`, `Ki = 0.030`). Run `save` to make it permanent. |
+| `default` | Restore the built-in gains (`Kp = 0.007`, `Ki = 0.050`). Run `save` to make it permanent. |
 | `stream on` / `stream off` | Enable or disable the CSV output. |
 | `help` | List the commands. |
 
