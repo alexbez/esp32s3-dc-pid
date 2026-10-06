@@ -6,13 +6,13 @@ PlatformIO / Arduino firmware that holds a DC motor at a speed set by a potentio
 - **Motor:** JGA25-370, 12 V, 60 rpm (output shaft), 1:103 gearbox, with Hall quadrature encoder
 - **Driver:** TB6612FNG (channel A)
 - **Setpoint:** potentiometer, 0 to 54 rpm
-- **Feedback:** speed from encoder counts over a fixed 20 ms sample period
+- **Feedback:** speed from encoder counts over a fixed 50 ms sample period
 - **Controller:** PI with feed-forward and anti-windup, gains adjustable over serial
 
 ## How it works
 
 1. Both encoder channels are decoded at 4x resolution in interrupts.
-2. Every 20 ms the firmware takes the change in counts and converts it to rpm (then smooths it).
+2. Every 50 ms the firmware takes the change in counts and converts it to rpm (then smooths it).
 3. The potentiometer value is oversampled, filtered and rate-limited to give the target rpm.
 4. The PI controller computes a PWM duty: `duty = target/60 (feed-forward) + Kp*error + integral`.
    The integrator freezes while the output is saturated (anti-windup).
@@ -147,7 +147,7 @@ Type one command per line:
 | `ki <value>` | Set the integral gain (duty per rpm and second). With no value, prints the current gains. |
 | `get` | Print the current gains. |
 | `save` | Store the gains in flash. They are restored on boot. |
-| `default` | Restore the built-in gains (`Kp = 0.007`, `Ki = 0.050`). Run `save` to make it permanent. |
+| `default` | Restore the built-in gains (`Kp = 0.012`, `Ki = 0.050`). Run `save` to make it permanent. |
 | `stream on` / `stream off` | Enable or disable the CSV output. |
 | `help` | List the commands. |
 

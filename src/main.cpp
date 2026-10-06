@@ -5,7 +5,7 @@
  *  - Driver  : TB6612FNG (channel A)
  *  - Setpoint: potentiometer on ADC1 (0 .. MAX_SETPOINT_RPM)
  *  - Feedback: speed = encoder counts accumulated over a fixed sample period
- *  - Control : PI + feed-forward, anti-windup, fixed 20 ms sample time
+ *  - Control : PI + feed-forward, anti-windup, fixed 50 ms sample time
  *
  * Wiring (change the pins below if needed):
  *   TB6612FNG  PWMA -> GPIO6     AIN1 -> GPIO4     AIN2 -> GPIO5    STBY -> GPIO7
@@ -65,10 +65,10 @@ constexpr uint32_t PWM_MAX     = (1u << PWM_BITS) - 1;
 constexpr uint8_t  PWM_CHANNEL = 0;      // used by LEDC API of arduino-esp32 2.x
 
 // ------------------------------ Control -----------------------------------
-constexpr uint32_t CONTROL_PERIOD_US = 20000;  // 20 ms -> 50 Hz loop (~91 counts/sample at full speed)
-constexpr uint32_t PRINT_PERIOD_MS   = 50;
+constexpr uint32_t CONTROL_PERIOD_US = 50000;  // 50 ms -> 20 Hz loop (~227 counts/sample at full speed)
+ constexpr uint32_t PRINT_PERIOD_MS   = 50;
 
-constexpr float KP_DEFAULT = 0.007f;  // duty per rpm of error (starting point, tune over serial)
+constexpr float KP_DEFAULT = 0.012f;  // duty per rpm of error (starting point, tune over serial)
 constexpr float KI_DEFAULT = 0.050f;  // duty per (rpm * s) of error
 constexpr float GAIN_MAX   = PiController::kGainMax;  // sanity limit for values typed over serial
 constexpr float INTEGRAL_LIMIT = 0.5f;                // anti-windup clamp, duty units
